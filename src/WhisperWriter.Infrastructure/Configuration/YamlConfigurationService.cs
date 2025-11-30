@@ -144,6 +144,7 @@ public sealed class YamlConfigurationService : IConfigurationService
                 {
                     Model = config.Model.Local.Model,
                     Device = config.Model.Local.Device,
+                    GpuDeviceIndex = config.Model.Local.GpuDeviceIndex,
                     ComputeType = config.Model.Local.ComputeType,
                     ConditionOnPreviousText = config.Model.Local.ConditionOnPreviousText,
                     VadFilter = config.Model.Local.VadFilter,

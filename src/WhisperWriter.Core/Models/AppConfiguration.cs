@@ -97,6 +97,11 @@ public sealed class LocalModelSettings
     public string Device { get; set; } = "auto";
 
     /// <summary>
+    /// The GPU device index to use when Device is "cuda" (-1 for auto/default).
+    /// </summary>
+    public int GpuDeviceIndex { get; set; } = -1;
+
+    /// <summary>
     /// The compute type for quantization.
     /// </summary>
     public string ComputeType { get; set; } = "default";

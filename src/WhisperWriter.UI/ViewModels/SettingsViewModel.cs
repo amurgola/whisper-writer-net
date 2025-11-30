@@ -15,6 +15,7 @@ public partial class SettingsViewModel : ViewModelBase
     private readonly IConfigurationService _configService;
     private readonly IAudioRecorderService _audioRecorder;
     private readonly IWhisperModelManager? _modelManager;
+    private readonly ICudaDetectionService? _cudaDetectionService;
 
     // Model Options
     [ObservableProperty]
@@ -65,6 +66,25 @@ public partial class SettingsViewModel : ViewModelBase
 
     [ObservableProperty]
     private string _selectedModelMemoryInfo = string.Empty;
+
+    // CUDA status
+    [ObservableProperty]
+    private bool _isCudaAvailable;
+
+    [ObservableProperty]
+    private string _cudaStatusMessage = string.Empty;
+
+    [ObservableProperty]
+    private string _cudaDownloadUrl = "https://developer.nvidia.com/cuda-downloads";
+
+    [ObservableProperty]
+    private bool _showCudaSection;
+
+    [ObservableProperty]
+    private int _selectedGpuIndex = -1;
+
+    [ObservableProperty]
+    private GpuDeviceInfo? _selectedGpuDevice;
 
     // Recording Options
     [ObservableProperty]
@@ -119,6 +139,7 @@ public partial class SettingsViewModel : ViewModelBase
     public ObservableCollection<string> LocalModels { get; } = new() { "tiny", "base", "small", "medium", "large" };
     public ObservableCollection<string> Devices { get; } = new() { "auto", "cuda", "cpu" };
     public ObservableCollection<string> ComputeTypes { get; } = new() { "default", "float32", "float16", "int8" };
+    public ObservableCollection<GpuDeviceInfo> GpuDevices { get; } = new();
     public ObservableCollection<RecordingMode> RecordingModes { get; } = new()
     {
         RecordingMode.Continuous,
@@ -134,11 +155,16 @@ public partial class SettingsViewModel : ViewModelBase
         InputMethod.Dotool
     };
 
-    public SettingsViewModel(IConfigurationService configService, IAudioRecorderService audioRecorder, IWhisperModelManager? modelManager = null)
+    public SettingsViewModel(
+        IConfigurationService configService,
+        IAudioRecorderService audioRecorder,
+        IWhisperModelManager? modelManager = null,
+        ICudaDetectionService? cudaDetectionService = null)
     {
         _configService = configService;
         _audioRecorder = audioRecorder;
         _modelManager = modelManager;
+        _cudaDetectionService = cudaDetectionService;
 
         if (_modelManager != null)
         {
@@ -148,6 +174,7 @@ public partial class SettingsViewModel : ViewModelBase
         LoadAudioDevices();
         LoadFromConfiguration();
         UpdateModelInfo();
+        UpdateCudaStatus();
     }
 
     private void OnDownloadProgressChanged(object? sender, ModelDownloadProgressEventArgs e)
@@ -168,6 +195,77 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnLocalModelChanged(string value)
     {
         UpdateModelInfo();
+    }
+
+    partial void OnLocalDeviceChanged(string value)
+    {
+        // Show CUDA section when cuda is selected
+        ShowCudaSection = value.Equals("cuda", StringComparison.OrdinalIgnoreCase);
+        UpdateCudaStatus();
+    }
+
+    private void UpdateCudaStatus()
+    {
+        if (_cudaDetectionService == null)
+        {
+            IsCudaAvailable = false;
+            CudaStatusMessage = "CUDA detection service not available";
+            return;
+        }
+
+        var status = _cudaDetectionService.GetCudaStatus();
+        IsCudaAvailable = status.IsAvailable;
+        CudaStatusMessage = status.StatusMessage;
+
+        // Update GPU devices list
+        GpuDevices.Clear();
+        if (status.IsAvailable && status.Devices.Count > 0)
+        {
+            // Add "Auto" option
+            GpuDevices.Add(new GpuDeviceInfo { DeviceIndex = -1, Name = "Auto (Default)" });
+
+            foreach (var device in status.Devices)
+            {
+                GpuDevices.Add(device);
+            }
+
+            // Select the correct device based on saved index
+            SelectedGpuDevice = GpuDevices.FirstOrDefault(d => d.DeviceIndex == SelectedGpuIndex)
+                                ?? GpuDevices.First();
+        }
+    }
+
+    partial void OnSelectedGpuDeviceChanged(GpuDeviceInfo? value)
+    {
+        if (value != null)
+        {
+            SelectedGpuIndex = value.DeviceIndex;
+        }
+    }
+
+    [RelayCommand]
+    private void RefreshCudaStatus()
+    {
+        _cudaDetectionService?.Refresh();
+        UpdateCudaStatus();
+    }
+
+    [RelayCommand]
+    private void OpenCudaDownloadLink()
+    {
+        try
+        {
+            var psi = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = CudaDownloadUrl,
+                UseShellExecute = true
+            };
+            System.Diagnostics.Process.Start(psi);
+        }
+        catch
+        {
+            // Ignore errors opening the URL
+        }
     }
 
     private void UpdateModelInfo()
@@ -245,6 +343,7 @@ public partial class SettingsViewModel : ViewModelBase
         LocalDevice = config.Model.Local.Device;
         ComputeType = config.Model.Local.ComputeType;
         KeepModelLoaded = config.Model.Local.KeepModelLoaded;
+        SelectedGpuIndex = config.Model.Local.GpuDeviceIndex;
 
         // Recording
         ActivationKey = config.Recording.ActivationKey;
@@ -285,6 +384,7 @@ public partial class SettingsViewModel : ViewModelBase
         config.Model.Local.Device = LocalDevice;
         config.Model.Local.ComputeType = ComputeType;
         config.Model.Local.KeepModelLoaded = KeepModelLoaded;
+        config.Model.Local.GpuDeviceIndex = SelectedGpuIndex;
 
         // Recording
         config.Recording.ActivationKey = ActivationKey;

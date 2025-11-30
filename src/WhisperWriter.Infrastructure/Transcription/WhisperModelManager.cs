@@ -161,25 +161,41 @@ public sealed class WhisperModelManager : IWhisperModelManager
 
             var config = _configService.Configuration.Model;
             var device = config.Local.Device.ToLowerInvariant();
+            var gpuDeviceIndex = config.Local.GpuDeviceIndex;
 
             // Configure runtime library order based on device preference
             ConfigureRuntimeOrder(device);
 
             // Notify that loading is starting
             var loadingMessage = device == "cuda"
-                ? $"Loading {modelId} model (CUDA)..."
+                ? gpuDeviceIndex >= 0
+                    ? $"Loading {modelId} model (CUDA GPU {gpuDeviceIndex})..."
+                    : $"Loading {modelId} model (CUDA)..."
                 : device == "cpu"
                     ? $"Loading {modelId} model (CPU)..."
                     : $"Loading {modelId} model...";
             RaiseLoadingState(true, modelId, loadingMessage);
 
-            _logger.LogInformation("Loading model {ModelId} from {Path} with device preference: {Device}",
-                modelId, modelPath, device);
+            _logger.LogInformation("Loading model {ModelId} from {Path} with device preference: {Device}, GPU index: {GpuIndex}",
+                modelId, modelPath, device, gpuDeviceIndex);
             _logger.LogInformation("Runtime library order: {Order}",
                 string.Join(", ", RuntimeOptions.RuntimeLibraryOrder));
 
+            // Create factory options with GPU device selection if CUDA is enabled
+            var factoryOptions = new WhisperFactoryOptions();
+            if (device == "cuda" && gpuDeviceIndex >= 0)
+            {
+                factoryOptions.UseGpu = true;
+                factoryOptions.GpuDevice = gpuDeviceIndex;
+                _logger.LogInformation("Using GPU device index: {GpuIndex}", gpuDeviceIndex);
+            }
+            else if (device == "cuda")
+            {
+                factoryOptions.UseGpu = true;
+            }
+
             // Create factory from model file
-            _whisperFactory = WhisperFactory.FromPath(modelPath);
+            _whisperFactory = WhisperFactory.FromPath(modelPath, factoryOptions);
 
             // Build processor with configuration
             var builder = _whisperFactory.CreateBuilder();

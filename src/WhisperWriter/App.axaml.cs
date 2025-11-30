@@ -19,6 +19,7 @@ public class App : Avalonia.Application
     private IConfigurationService? _configService;
     private IAudioRecorderService? _audioRecorder;
     private IWhisperModelManager? _modelManager;
+    private ICudaDetectionService? _cudaDetectionService;
 
     public override void Initialize()
     {
@@ -34,6 +35,7 @@ public class App : Avalonia.Application
             _configService = Program.ServiceProvider.GetRequiredService<IConfigurationService>();
             _audioRecorder = Program.ServiceProvider.GetRequiredService<IAudioRecorderService>();
             _modelManager = Program.ServiceProvider.GetRequiredService<IWhisperModelManager>();
+            _cudaDetectionService = Program.ServiceProvider.GetRequiredService<ICudaDetectionService>();
 
             // Initialize the service
             await _whisperService.InitializeAsync();
@@ -149,7 +151,7 @@ public class App : Avalonia.Application
 
         var settingsWindow = new SettingsWindow
         {
-            DataContext = new SettingsViewModel(_configService, _audioRecorder, _modelManager)
+            DataContext = new SettingsViewModel(_configService, _audioRecorder, _modelManager, _cudaDetectionService)
         };
         settingsWindow.ShowDialog(_mainWindow);
     }

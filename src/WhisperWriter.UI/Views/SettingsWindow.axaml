@@ -144,6 +144,70 @@
                                 <CheckBox Content="Keep model loaded in memory (faster, uses more RAM)"
                                           IsChecked="{Binding KeepModelLoaded}"
                                           Margin="0,10,0,0"/>
+
+                                <!-- CUDA Status Section (shown when cuda is selected) -->
+                                <Border IsVisible="{Binding ShowCudaSection}"
+                                        Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
+                                        CornerRadius="5"
+                                        Padding="10"
+                                        Margin="0,10,0,0">
+                                    <StackPanel>
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
+                                            <TextBlock Text="CUDA Status"
+                                                       FontWeight="SemiBold"
+                                                       VerticalAlignment="Center"/>
+                                            <Button Content="Refresh"
+                                                    Command="{Binding RefreshCudaStatusCommand}"
+                                                    Padding="8,3"
+                                                    Margin="10,0,0,0"/>
+                                        </StackPanel>
+
+                                        <!-- Status Message - Available -->
+                                        <StackPanel Orientation="Horizontal" Margin="0,5,0,0" IsVisible="{Binding IsCudaAvailable}">
+                                            <TextBlock Text="✓"
+                                                       Foreground="Green"
+                                                       VerticalAlignment="Center"
+                                                       FontWeight="Bold"
+                                                       Margin="0,0,5,0"/>
+                                            <TextBlock Text="{Binding CudaStatusMessage}"
+                                                       TextWrapping="Wrap"
+                                                       VerticalAlignment="Center"/>
+                                        </StackPanel>
+
+                                        <!-- Status Message - Not Available -->
+                                        <StackPanel Orientation="Horizontal" Margin="0,5,0,0" IsVisible="{Binding !IsCudaAvailable}">
+                                            <TextBlock Text="✗"
+                                                       Foreground="Red"
+                                                       VerticalAlignment="Center"
+                                                       FontWeight="Bold"
+                                                       Margin="0,0,5,0"/>
+                                            <TextBlock Text="{Binding CudaStatusMessage}"
+                                                       TextWrapping="Wrap"
+                                                       VerticalAlignment="Center"/>
+                                        </StackPanel>
+
+                                        <!-- Download Link (shown when CUDA is not available) -->
+                                        <Button IsVisible="{Binding !IsCudaAvailable}"
+                                                Content="Download CUDA Toolkit"
+                                                Command="{Binding OpenCudaDownloadLinkCommand}"
+                                                Margin="0,10,0,0"
+                                                Padding="10,5"/>
+
+                                        <!-- GPU Selection (shown when CUDA is available) -->
+                                        <StackPanel IsVisible="{Binding IsCudaAvailable}" Margin="0,10,0,0">
+                                            <TextBlock Text="GPU Device:" Margin="0,0,0,5"/>
+                                            <ComboBox ItemsSource="{Binding GpuDevices}"
+                                                      SelectedItem="{Binding SelectedGpuDevice}"
+                                                      HorizontalAlignment="Stretch">
+                                                <ComboBox.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <TextBlock Text="{Binding DisplayName}"/>
+                                                    </DataTemplate>
+                                                </ComboBox.ItemTemplate>
+                                            </ComboBox>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
                             </StackPanel>
                         </Border>
 

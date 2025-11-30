@@ -4,6 +4,7 @@ using WhisperWriter.Core.Interfaces;
 using WhisperWriter.Infrastructure;
 using WhisperWriter.Infrastructure.Audio;
 using WhisperWriter.Infrastructure.Configuration;
+using WhisperWriter.Infrastructure.Cuda;
 using WhisperWriter.Infrastructure.Input;
 using WhisperWriter.Infrastructure.Keyboard;
 using WhisperWriter.Infrastructure.Transcription;
@@ -28,6 +29,9 @@ public static class DependencyInjection
 
         // Model manager for local Whisper models
         services.AddSingleton<IWhisperModelManager, WhisperModelManager>();
+
+        // CUDA detection service
+        services.AddSingleton<ICudaDetectionService, CudaDetectionService>();
 
         // Transcription services - both are registered as concrete types
         services.AddSingleton<OpenAiTranscriptionService>();
