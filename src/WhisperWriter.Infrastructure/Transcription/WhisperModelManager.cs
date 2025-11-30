@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Whisper.net;
 using Whisper.net.Ggml;
+using Whisper.net.LibraryLoader;
 using WhisperWriter.Core.Interfaces;
 using WhisperWriter.Core.Models;
 
@@ -161,18 +162,23 @@ public sealed class WhisperModelManager : IWhisperModelManager
             var config = _configService.Configuration.Model;
             var device = config.Local.Device.ToLowerInvariant();
 
+            // Configure runtime library order based on device preference
+            ConfigureRuntimeOrder(device);
+
             // Notify that loading is starting
             var loadingMessage = device == "cuda"
                 ? $"Loading {modelId} model (CUDA)..."
-                : $"Loading {modelId} model...";
+                : device == "cpu"
+                    ? $"Loading {modelId} model (CPU)..."
+                    : $"Loading {modelId} model...";
             RaiseLoadingState(true, modelId, loadingMessage);
 
             _logger.LogInformation("Loading model {ModelId} from {Path} with device preference: {Device}",
                 modelId, modelPath, device);
+            _logger.LogInformation("Runtime library order: {Order}",
+                string.Join(", ", RuntimeOptions.RuntimeLibraryOrder));
 
             // Create factory from model file
-            // Note: Whisper.net automatically uses CUDA if Whisper.net.Runtime.Cuda is installed
-            // and CUDA is available on the system
             _whisperFactory = WhisperFactory.FromPath(modelPath);
 
             // Build processor with configuration
@@ -313,6 +319,34 @@ public sealed class WhisperModelManager : IWhisperModelManager
             "large" => GgmlType.LargeV3,
             _ => throw new ArgumentException($"Unknown model: {modelId}", nameof(modelId))
         };
+    }
+
+    private void ConfigureRuntimeOrder(string device)
+    {
+        // Set the runtime library order based on device preference
+        // This must be done BEFORE loading the model
+        RuntimeOptions.RuntimeLibraryOrder.Clear();
+
+        switch (device)
+        {
+            case "cuda":
+                RuntimeOptions.RuntimeLibraryOrder.Add(RuntimeLibrary.Cuda);
+                RuntimeOptions.RuntimeLibraryOrder.Add(RuntimeLibrary.Cpu);
+                break;
+            case "cpu":
+                RuntimeOptions.RuntimeLibraryOrder.Add(RuntimeLibrary.Cpu);
+                break;
+            default: // "auto" - try GPU first, fall back to CPU
+                RuntimeOptions.RuntimeLibraryOrder.Add(RuntimeLibrary.Cuda);
+                RuntimeOptions.RuntimeLibraryOrder.Add(RuntimeLibrary.Vulkan);
+                RuntimeOptions.RuntimeLibraryOrder.Add(RuntimeLibrary.CoreML);
+                RuntimeOptions.RuntimeLibraryOrder.Add(RuntimeLibrary.OpenVino);
+                RuntimeOptions.RuntimeLibraryOrder.Add(RuntimeLibrary.Cpu);
+                break;
+        }
+
+        _logger.LogDebug("Configured runtime order for device '{Device}': {Runtimes}",
+            device, string.Join(", ", RuntimeOptions.RuntimeLibraryOrder));
     }
 
     private void RaiseProgress(string modelId, double percentage, long bytesDownloaded, long totalBytes, string status)

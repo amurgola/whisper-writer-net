@@ -95,3 +95,4 @@ public partial class StatusWindow : Window
         _ = _configService.SaveAsync();
     }
 }
+

@@ -147,7 +147,8 @@ public sealed class YamlConfigurationService : IConfigurationService
                     ComputeType = config.Model.Local.ComputeType,
                     ConditionOnPreviousText = config.Model.Local.ConditionOnPreviousText,
                     VadFilter = config.Model.Local.VadFilter,
-                    ModelPath = config.Model.Local.ModelPath
+                    ModelPath = config.Model.Local.ModelPath,
+                    KeepModelLoaded = config.Model.Local.KeepModelLoaded
                 }
             },
             Recording = new RecordingOptions
@@ -172,7 +173,9 @@ public sealed class YamlConfigurationService : IConfigurationService
                 PrintToTerminal = config.Misc.PrintToTerminal,
                 HideStatusWindow = config.Misc.HideStatusWindow,
                 NoiseOnCompletion = config.Misc.NoiseOnCompletion,
-                StartMinimized = config.Misc.StartMinimized
+                StartMinimized = config.Misc.StartMinimized,
+                StatusWindowX = config.Misc.StatusWindowX,
+                StatusWindowY = config.Misc.StatusWindowY
             }
         };
     }
