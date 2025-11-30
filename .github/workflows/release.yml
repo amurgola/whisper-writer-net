@@ -2,7 +2,9 @@ name: Build and Release
 
 on:
   release:
-    types: [published]
+    # listen for both creation and publish events (covers most UI/API cases)
+    types: [created, published]
+  workflow_dispatch: {}
 
 env:
   DOTNET_VERSION: '9.0.x'
