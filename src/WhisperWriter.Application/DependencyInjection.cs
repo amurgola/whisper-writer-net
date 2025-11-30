@@ -26,8 +26,18 @@ public static class DependencyInjection
                 sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<YamlConfigurationService>>(),
                 configPath));
 
+        // Model manager for local Whisper models
+        services.AddSingleton<IWhisperModelManager, WhisperModelManager>();
+
+        // Transcription services - both are registered as concrete types
+        services.AddSingleton<OpenAiTranscriptionService>();
+        services.AddSingleton<LocalWhisperTranscriptionService>();
+
+        // Transcription service factory - dynamically selects service based on current config
+        // This allows runtime switching between API and local transcription
+        services.AddSingleton<ITranscriptionService, TranscriptionServiceFactory>();
+
         // Infrastructure services
-        services.AddSingleton<ITranscriptionService, OpenAiTranscriptionService>();
         services.AddSingleton<IAudioRecorderService, NAudioRecorderService>();
         services.AddSingleton<IKeyboardListenerService, SharpHookKeyboardListenerService>();
         services.AddSingleton<IInputSimulatorService, SharpHookInputSimulatorService>();

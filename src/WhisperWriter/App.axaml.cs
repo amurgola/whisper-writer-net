@@ -18,6 +18,7 @@ public class App : Avalonia.Application
     private MainWindow? _mainWindow;
     private IConfigurationService? _configService;
     private IAudioRecorderService? _audioRecorder;
+    private IWhisperModelManager? _modelManager;
 
     public override void Initialize()
     {
@@ -32,13 +33,14 @@ public class App : Avalonia.Application
             _whisperService = Program.ServiceProvider.GetRequiredService<WhisperWriterService>();
             _configService = Program.ServiceProvider.GetRequiredService<IConfigurationService>();
             _audioRecorder = Program.ServiceProvider.GetRequiredService<IAudioRecorderService>();
+            _modelManager = Program.ServiceProvider.GetRequiredService<IWhisperModelManager>();
 
             // Initialize the service
             await _whisperService.InitializeAsync();
 
             // Create view models
             var mainViewModel = new MainViewModel(_whisperService);
-            var statusViewModel = new StatusViewModel(_whisperService);
+            var statusViewModel = new StatusViewModel(_whisperService, _modelManager);
 
             // Create main window
             _mainWindow = new MainWindow
@@ -60,7 +62,7 @@ public class App : Avalonia.Application
             // Create status window if not hidden
             if (!_configService.Configuration.Misc.HideStatusWindow)
             {
-                _statusWindow = new StatusWindow(statusViewModel);
+                _statusWindow = new StatusWindow(statusViewModel, _configService);
                 _statusWindow.Show();
             }
 
@@ -120,9 +122,14 @@ public class App : Avalonia.Application
             return true;
         }
 
-        // If using local model, we could check if the model is downloaded
-        // For now, we'll just check if UseApi is false (local model selected)
-        // Future enhancement: check if local model files exist
+        // If using local model, check if the model is downloaded
+        if (!config.Model.UseApi && _modelManager != null)
+        {
+            if (!_modelManager.IsModelDownloaded(config.Model.Local.Model))
+            {
+                return true;
+            }
+        }
 
         return false;
     }
@@ -142,7 +149,7 @@ public class App : Avalonia.Application
 
         var settingsWindow = new SettingsWindow
         {
-            DataContext = new SettingsViewModel(_configService, _audioRecorder)
+            DataContext = new SettingsViewModel(_configService, _audioRecorder, _modelManager)
         };
         settingsWindow.ShowDialog(_mainWindow);
     }

@@ -87,7 +87,7 @@ public sealed class ApiModelSettings
 public sealed class LocalModelSettings
 {
     /// <summary>
-    /// The model size to use (tiny, small, base, medium, large).
+    /// The model size to use (tiny, base, small, medium, large).
     /// </summary>
     public string Model { get; set; } = "base";
 
@@ -112,9 +112,14 @@ public sealed class LocalModelSettings
     public bool VadFilter { get; set; } = false;
 
     /// <summary>
-    /// Custom path to the model.
+    /// Custom path to the model file.
     /// </summary>
     public string? ModelPath { get; set; }
+
+    /// <summary>
+    /// Keep model loaded in memory for faster transcription (uses more RAM).
+    /// </summary>
+    public bool KeepModelLoaded { get; set; } = true;
 }
 
 /// <summary>
@@ -208,4 +213,14 @@ public sealed class MiscellaneousOptions
     /// Whether to start minimized to tray.
     /// </summary>
     public bool StartMinimized { get; set; } = false;
+
+    /// <summary>
+    /// Status window X position. -1 means use default (bottom-right).
+    /// </summary>
+    public int StatusWindowX { get; set; } = -1;
+
+    /// <summary>
+    /// Status window Y position. -1 means use default (bottom-right).
+    /// </summary>
+    public int StatusWindowY { get; set; } = -1;
 }

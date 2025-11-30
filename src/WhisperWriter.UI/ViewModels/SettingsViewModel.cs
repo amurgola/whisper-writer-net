@@ -14,6 +14,7 @@ public partial class SettingsViewModel : ViewModelBase
 {
     private readonly IConfigurationService _configService;
     private readonly IAudioRecorderService _audioRecorder;
+    private readonly IWhisperModelManager? _modelManager;
 
     // Model Options
     [ObservableProperty]
@@ -45,6 +46,25 @@ public partial class SettingsViewModel : ViewModelBase
 
     [ObservableProperty]
     private string _computeType = "default";
+
+    [ObservableProperty]
+    private bool _keepModelLoaded = true;
+
+    // Model download state
+    [ObservableProperty]
+    private bool _isDownloading;
+
+    [ObservableProperty]
+    private double _downloadProgress;
+
+    [ObservableProperty]
+    private string _downloadStatus = string.Empty;
+
+    [ObservableProperty]
+    private bool _isSelectedModelDownloaded;
+
+    [ObservableProperty]
+    private string _selectedModelMemoryInfo = string.Empty;
 
     // Recording Options
     [ObservableProperty]
@@ -114,13 +134,88 @@ public partial class SettingsViewModel : ViewModelBase
         InputMethod.Dotool
     };
 
-    public SettingsViewModel(IConfigurationService configService, IAudioRecorderService audioRecorder)
+    public SettingsViewModel(IConfigurationService configService, IAudioRecorderService audioRecorder, IWhisperModelManager? modelManager = null)
     {
         _configService = configService;
         _audioRecorder = audioRecorder;
+        _modelManager = modelManager;
+
+        if (_modelManager != null)
+        {
+            _modelManager.DownloadProgressChanged += OnDownloadProgressChanged;
+        }
 
         LoadAudioDevices();
         LoadFromConfiguration();
+        UpdateModelInfo();
+    }
+
+    private void OnDownloadProgressChanged(object? sender, ModelDownloadProgressEventArgs e)
+    {
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            DownloadProgress = e.ProgressPercentage;
+            DownloadStatus = e.Status;
+
+            if (e.ProgressPercentage >= 100)
+            {
+                IsDownloading = false;
+                UpdateModelInfo();
+            }
+        });
+    }
+
+    partial void OnLocalModelChanged(string value)
+    {
+        UpdateModelInfo();
+    }
+
+    private void UpdateModelInfo()
+    {
+        var modelInfo = WhisperModelInfo.GetById(LocalModel);
+        if (modelInfo != null)
+        {
+            SelectedModelMemoryInfo = $"~{modelInfo.RequiredRamGb:F1} GB RAM required, {modelInfo.DownloadSizeMb} MB download, {modelInfo.RelativeSpeed} speed";
+        }
+        else
+        {
+            SelectedModelMemoryInfo = string.Empty;
+        }
+
+        IsSelectedModelDownloaded = _modelManager?.IsModelDownloaded(LocalModel) ?? false;
+    }
+
+    [RelayCommand]
+    private async Task DownloadModelAsync()
+    {
+        if (_modelManager == null || IsDownloading) return;
+
+        IsDownloading = true;
+        DownloadProgress = 0;
+        DownloadStatus = "Starting download...";
+
+        try
+        {
+            await _modelManager.DownloadModelAsync(LocalModel);
+            UpdateModelInfo();
+        }
+        catch (Exception ex)
+        {
+            DownloadStatus = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            IsDownloading = false;
+        }
+    }
+
+    [RelayCommand]
+    private async Task DeleteModelAsync()
+    {
+        if (_modelManager == null) return;
+
+        await _modelManager.DeleteModelAsync(LocalModel);
+        UpdateModelInfo();
     }
 
     private void LoadAudioDevices()
@@ -149,6 +244,7 @@ public partial class SettingsViewModel : ViewModelBase
         LocalModel = config.Model.Local.Model;
         LocalDevice = config.Model.Local.Device;
         ComputeType = config.Model.Local.ComputeType;
+        KeepModelLoaded = config.Model.Local.KeepModelLoaded;
 
         // Recording
         ActivationKey = config.Recording.ActivationKey;
@@ -188,6 +284,7 @@ public partial class SettingsViewModel : ViewModelBase
         config.Model.Local.Model = LocalModel;
         config.Model.Local.Device = LocalDevice;
         config.Model.Local.ComputeType = ComputeType;
+        config.Model.Local.KeepModelLoaded = KeepModelLoaded;
 
         // Recording
         config.Recording.ActivationKey = ActivationKey;

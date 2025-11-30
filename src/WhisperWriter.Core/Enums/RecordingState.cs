@@ -16,6 +16,11 @@ public enum RecordingState
     Recording,
 
     /// <summary>
+    /// Loading the transcription model into memory.
+    /// </summary>
+    LoadingModel,
+
+    /// <summary>
     /// Processing/transcribing the recorded audio.
     /// </summary>
     Transcribing,
